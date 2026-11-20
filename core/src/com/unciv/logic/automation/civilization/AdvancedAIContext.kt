@@ -1,5 +1,6 @@
 package com.unciv.logic.automation.civilization
 
+import com.unciv.logic.civilization.Civilization
 import com.unciv.utils.Log
 
 /** Snapshot of a civilization at the start of its automation pass. */
@@ -9,6 +10,15 @@ class AdvancedAIContext internal constructor(
     val ownCityCount: Int,
     private val diagnostics: ((Diagnostic) -> Unit)?
 ) {
+    internal var strategicPriorities: StrategicPriorities? = null
+        private set
+
+    internal val diagnosticsEnabled: Boolean get() = diagnostics != null
+
+    internal fun analyzeStrategy(civ: Civilization) {
+        strategicPriorities = StrategicDirector.analyze(civ, this)
+    }
+
     data class Diagnostic(
         val turn: Int,
         val civId: String,

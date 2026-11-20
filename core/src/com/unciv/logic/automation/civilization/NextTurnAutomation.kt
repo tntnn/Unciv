@@ -90,6 +90,7 @@ object NextTurnAutomation {
             civInfo.cityStateFunctions.updateDiplomaticRelationshipForCityState()
         }
 
+        if (civInfo.isAI()) cache.advancedAIContext?.analyzeStrategy(civInfo)
         chooseTechToResearch(civView)
         automateCityBombardment(civView)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
