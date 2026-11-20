@@ -4,6 +4,8 @@ import com.unciv.logic.GameInfo
 import kotlin.math.roundToInt
 
 class SimulationStep (gameInfo: GameInfo, statTurns: List<Int> = listOf()) {
+    private data class ResearchSample(val completed: Int, val sciencePerTurn: Float)
+
     private val civilizationNames = gameInfo.civilizations.filter { !it.isSpectator && it.isMajorCiv }.map { it.civID }
     private val reportingTurns = statTurns + -1
     var turns = gameInfo.turns
@@ -13,6 +15,7 @@ class SimulationStep (gameInfo: GameInfo, statTurns: List<Int> = listOf()) {
     val turnStatsPop = mutableMapOf<String, MutableMap<Int, MutableInt>>() // [civ][turn][stat]
     val turnStatsProd = mutableMapOf<String, MutableMap<Int, MutableInt>>() // [civ][turn][stat]
     val turnStatsCities = mutableMapOf<String, MutableMap<Int, MutableInt>>() // [civ][turn][stat]
+    private val turnResearch = mutableMapOf<String, MutableMap<Int, ResearchSample>>()
     
     init {
         for (civ in civilizationNames) {
@@ -39,6 +42,8 @@ class SimulationStep (gameInfo: GameInfo, statTurns: List<Int> = listOf()) {
             val cityCnt = civ.cities.count()
             //println("$civ $cityCnt")
             turnStatsCities[civ.civID]!![turn]!!.set(cityCnt)
+            turnResearch.getOrPut(civ.civID) { mutableMapOf() }[turn] =
+                ResearchSample(civ.tech.getNumberOfTechsResearched(), civ.stats.statsForNextTurn.science)
         }
     }
 
@@ -49,7 +54,9 @@ class SimulationStep (gameInfo: GameInfo, statTurns: List<Int> = listOf()) {
             if (population == -1) return@mapNotNull null
             val production = turnStatsProd.getValue(civ).getValue(turn).value
             val cities = turnStatsCities.getValue(civ).getValue(turn).value
-            "$civ(population=$population production=$production cities=$cities)"
+            val research = turnResearch.getValue(civ).getValue(turn)
+            "$civ(population=$population production=$production cities=$cities " +
+                "techs=${research.completed} science=${research.sciencePerTurn})"
         }
         "$label=[${samples.joinToString()}]"
     }

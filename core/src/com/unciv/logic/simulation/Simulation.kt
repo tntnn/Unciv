@@ -116,6 +116,8 @@ class Simulation(
                     val gameSetupInfo = GameSetupInfo(newGameInfo)
                     gameSetupInfo.mapParameters.seed = 0
                     val gameInfo = GameStarter.startNewGame(gameSetupInfo)
+                    val playerOrder = gameInfo.civilizations
+                        .filter { it.isMajorCiv && !it.isSpectator }.joinToString(",") { it.civID }
 
                     gameInfo.simulateUntilWin = true
                     gameInfo.simulateMaxTurns = maxTurns
@@ -136,7 +138,8 @@ class Simulation(
                     }
 
                     println("Simulation game: index=$gameIndex seed=${gameInfo.tileMap.mapParameters.seed} " +
-                        "gameId=${gameInfo.gameId} endingTurn=${step.turns} winner=${step.winner ?: "none"} " +
+                        "gameId=${gameInfo.gameId} playerOrder=[$playerOrder] " +
+                        "endingTurn=${step.turns} winner=${step.winner ?: "none"} " +
                         "victory=${step.victoryType ?: "draw"} elapsedMs=${started.elapsedNow().inWholeMilliseconds} " +
                         "stats=${step.statisticsText()}")
 

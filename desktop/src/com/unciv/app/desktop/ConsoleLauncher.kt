@@ -63,8 +63,8 @@ internal object ConsoleLauncher {
         val buildRevision = System.getProperty("unciv.benchmark.revision")
         val simulation = if (smoke) {
             Simulation(newGame, simulationsPerThread = 8, threadsNumber = 4, maxTurns = 100,
-                statTurns = listOf(25, 50, 75), civIdsInExperimentGroup = setOf(simulationCiv2),
-                configurationId = "console-mirrored-smoke-v1", buildRevision = buildRevision)
+                statTurns = listOf(25, 50, 75, 100), civIdsInExperimentGroup = setOf(simulationCiv2),
+                configurationId = "console-mirrored-smoke-v2", buildRevision = buildRevision)
         } else {
             Simulation(newGame, 500, 8, configurationId = "console-mirrored-v1", buildRevision = buildRevision)
         }
