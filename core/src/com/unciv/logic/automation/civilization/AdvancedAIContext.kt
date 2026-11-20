@@ -15,8 +15,23 @@ class AdvancedAIContext internal constructor(
 
     internal val diagnosticsEnabled: Boolean get() = diagnostics != null
 
-    internal fun analyzeStrategy(civ: Civilization) {
-        strategicPriorities = StrategicDirector.analyze(civ, this)
+    internal fun prioritiesFor(civ: Civilization): StrategicPriorities? {
+        if (!civ.isAI()) return null
+        return strategicPriorities ?: StrategicDirector.analyze(civ, this).also { strategicPriorities = it }
+    }
+
+    companion object {
+        /** Includes construction decisions from turn preparation and cleanup. */
+        internal inline fun <T> duringTurn(civ: Civilization, action: () -> T): T {
+            if (!civ.isAI() || civ.isBarbarian || civ.isSpectator) return action()
+            val previous = civ.cache.activeAdvancedAIContext
+            civ.cache.activeAdvancedAIContext = AdvancedAIContext(civ.gameInfo.turns, civ.civID, civ.cities.size, null)
+            try {
+                return action()
+            } finally {
+                civ.cache.activeAdvancedAIContext = previous
+            }
+        }
     }
 
     data class Diagnostic(

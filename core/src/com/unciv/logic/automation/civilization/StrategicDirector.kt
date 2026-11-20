@@ -15,11 +15,14 @@ data class StrategicPriorities(
 
 /** Analyzes the civilization's own position and its side of diplomatic relationships. */
 object StrategicDirector {
+    internal fun hasKnownWar(civ: Civilization) =
+        civ.diplomacy.values.any { it.diplomaticStatus == DiplomaticStatus.War }
+
     fun analyze(civ: Civilization, context: AdvancedAIContext? = null): StrategicPriorities =
         timeThis("StrategicDirector.analyze") {
             val cities = civ.cities.size.coerceAtLeast(1)
             val yields = civ.stats.statsForNextTurn
-            val atWar = civ.diplomacy.values.any { it.diplomaticStatus == DiplomaticStatus.War }
+            val atWar = hasKnownWar(civ)
             val damagedCity = civ.cities.any { it.health < it.getMaxHealth() }
             val militaryUnits = civ.units.getCivUnits().count { it.baseUnit.isMilitary }
             val runningOutOfGold = yields.gold < 0f && civ.gold + yields.gold * 8 < 0

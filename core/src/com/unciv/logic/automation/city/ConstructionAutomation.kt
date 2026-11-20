@@ -5,7 +5,9 @@ import com.unciv.view.TileView
 import com.unciv.GUI
 import com.unciv.UncivGame
 import com.unciv.logic.automation.Automation
+import com.unciv.logic.automation.civilization.AdvancedAIContext
 import com.unciv.logic.automation.civilization.NextTurnAutomation
+import com.unciv.logic.automation.civilization.StrategicDirector
 import com.unciv.logic.automation.unit.WorkerAutomation
 import com.unciv.logic.city.CityConstructions
 import com.unciv.logic.civilization.CityAction
@@ -32,7 +34,10 @@ import kotlin.math.max
 import kotlin.math.sqrt
 import com.unciv.logic.automation.Timers.Companion.timeThis
 
-class ConstructionAutomation(val cityConstructions: CityConstructions) {
+class ConstructionAutomation(
+    val cityConstructions: CityConstructions,
+    private val context: AdvancedAIContext? = null
+) {
 
     private val city = cityConstructions.city
     private val civInfo = city.civ
@@ -88,15 +93,40 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
     private val averageProduction = civInfo.cities.map { it.cityStats.currentCityStats.production }.average()
     private val cityIsOverAverageProduction = city.cityStats.currentCityStats.production >= averageProduction
 
-    private data class ConstructionChoice(val choice: IConstruction, var choiceModifier: Float,
-                                          val remainingWork: Int, val production: Int)
+    // A damaged city may be in immediate danger. Leave its evaluator's urgency unchanged.
+    private val cityStrategy by lazy {
+        if (context == null || city.health < city.getMaxHealth()) null
+        else context.prioritiesFor(civInfo)?.let { priorities ->
+            priorities to CityRoleWeights.analyze(city, averageProduction.toFloat(), StrategicDirector.hasKnownWar(civInfo))
+        }
+    }
 
-    private fun addChoice(choices: ArrayList<ConstructionChoice>, choice: IConstruction, choiceModifier: Float) {
+    private fun strategicAdjustment(yields: Stats?, military: Float = 0f, defense: Float = 0f) =
+        cityStrategy?.let { (priorities, roles) -> roles.adjustment(priorities, yields, military, defense) }
+            ?: CityRoleWeights.Adjustment.None
+
+    private data class ConstructionChoice(
+        val choice: IConstruction,
+        val baseScore: Float,
+        val adjustment: CityRoleWeights.Adjustment,
+        val protectRank: Boolean
+    ) {
+        val score = baseScore * (1f + adjustment.strategic + adjustment.cityRole)
+    }
+
+    private fun addChoice(
+        choices: ArrayList<ConstructionChoice>,
+        choice: IConstruction,
+        choiceModifier: Float,
+        adjustment: CityRoleWeights.Adjustment = CityRoleWeights.Adjustment.None,
+        protectRank: Boolean = false
+    ) {
         val extraAiModifier = if (civInfo.isAI() && choice is INonPerpetualConstruction)
             choice.getWeightForAiDecision(GameContext(civInfo, city))
         else 1f
-        choices.add(ConstructionChoice(choice, choiceModifier * extraAiModifier,
-            cityConstructions.getRemainingWork(choice.name), cityConstructions.productionForConstruction(choice.name)))
+        val remainingWork = cityConstructions.getRemainingWork(choice.name).coerceAtLeast(1)
+        val baseScore = (choiceModifier * extraAiModifier / remainingWork).coerceAtLeast(0f)
+        choices.add(ConstructionChoice(choice, baseScore, adjustment, protectRank))
     }
 
 
@@ -133,8 +163,22 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
                     PerpetualConstruction.Faith.isBuildable(cityConstructions) -> PerpetualConstruction.Faith
                     else -> PerpetualConstruction.Idle
                 }
-            } else { relativeCostEffectiveness.maxBy { (it.choiceModifier / it.remainingWork.coerceAtLeast(1)).coerceAtLeast(0f) }.choice }
+            } else {
+                val baseline = relativeCostEffectiveness.maxBy { it.baseScore }
+                if (baseline.protectRank) baseline.choice else relativeCostEffectiveness.maxBy { it.score }.choice
+            }
             //TODO: All bad things are build anyways at the moment, maybe let's stop doing that and chose perpetual construction instead
+
+        if (context?.diagnosticsEnabled == true) {
+            val top = relativeCostEffectiveness.sortedByDescending { it.score }.take(3)
+            fun details(candidate: ConstructionChoice) =
+                "${candidate.choice.name}(base=${candidate.baseScore} strategy=${candidate.adjustment.strategic} " +
+                    "role=${candidate.adjustment.cityRole} final=${candidate.score} protected=${candidate.protectRank})"
+            val chosen = relativeCostEffectiveness.firstOrNull { it.choice == chosenConstruction }
+            context.record("construction-ranking", chosenConstruction.name,
+                "city=${city.id} roles=${cityStrategy?.second} selected=${chosen?.let(::details)} " +
+                    "top=${top.joinToString(transform = ::details)}", chosen?.score?.toDouble())
+        }
 
         // Do not notify while in resistance (you can't do anything about it) - still notify for puppets ("annex already!")
         // Also do not notify while city screen open - might be a buying spree, not helpful
@@ -178,7 +222,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
 
         if (!civInfo.isAIOrAutoPlaying()) modifier /= 2 // Players prefer to make their own unit choices usually
         modifier *= personality.modifierFocus(PersonalityValue.Military, .3f)
-        addChoice(relativeCostEffectiveness, militaryUnit, modifier)
+        addChoice(relativeCostEffectiveness, militaryUnit, modifier, strategicAdjustment(null, military = 1f))
     }
 
     private fun addWorkBoatChoice() {
@@ -256,7 +300,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         val spaceshipPart = (nonWonders + units).filter { it.name in spaceshipParts }.filterBuildable().firstOrNull()
             ?: return
         val modifier = 20f //We're weighing Apollo program according to personality. If we decided to invest in that, we might as well commit to it.
-        addChoice(relativeCostEffectiveness, spaceshipPart, modifier)
+        addChoice(relativeCostEffectiveness, spaceshipPart, modifier, protectRank = true)
     }
 
     private fun addBuildingChoices() {
@@ -265,17 +309,18 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             if (building.isWonder && city.isPuppet) continue
             // We shouldn't try to build wonders in undeveloped cities and empires
             if (building.isWonder && (!cityIsOverAverageProduction || civInfo.cities.sumOf { it.population.population } < 12)) continue
-            addChoice(relativeCostEffectiveness, building, getValueOfBuilding(building, cityBaseline))
+            val stats = getWeightedBuildingStats(building, cityBaseline)
+            val victoryValue = getVictoryBuildingValue(building)
+            val baseValue = Automation.rankStatsValue(stats, GameView(civInfo.gameInfo, civInfo).civView) +
+                getMilitaryBuildingValue(building) + victoryValue + getOnetimeUniqueBonuses(building)
+            val protectRank = victoryValue > 0f || building.name in spaceshipParts
+            val adjustment = if (protectRank) CityRoleWeights.Adjustment.None else {
+                if (allTechsAreResearched) stats.science = 0f
+                strategicAdjustment(stats,
+                    defense = if (building.cityHealth > 0 || building.cityStrength > 0) 1f else 0f)
+            }
+            addChoice(relativeCostEffectiveness, building, baseValue, adjustment, protectRank)
         }
-    }
-
-    private fun getValueOfBuilding(building: Building, cityBaseline: Stats): Float {
-        var value = 0f
-        value += applyBuildingStats(building, cityBaseline)
-        value += getMilitaryBuildingValue(building)
-        value += getVictoryBuildingValue(building)
-        value += getOnetimeUniqueBonuses(building)
-        return value
     }
 
     @Readonly
@@ -342,7 +387,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
         return value
     }
 
-    private fun applyBuildingStats(building: Building, cityBaseline: Stats): Float {
+    private fun getWeightedBuildingStats(building: Building, cityBaseline: Stats): Stats {
         val buildingStats = getStatDifferenceFromBuilding(building.name, cityBaseline)
         buildingStats.add(getBuildingStatsFromUniques(building, buildingStats))
 
@@ -363,7 +408,7 @@ class ConstructionAutomation(val cityConstructions: CityConstructions) {
             buildingStats[stat] *= personality.scaledFocus(PersonalityValue[stat])
         }
 
-        return Automation.rankStatsValue(buildingStats.clone(), GameView(civInfo.gameInfo, civInfo).civView)
+        return buildingStats
     }
 
     // NOT readonly safe, since it alters the tile ownership of real tiles

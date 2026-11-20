@@ -58,7 +58,9 @@ object NextTurnAutomation {
         if (civInfo.isSpectator) return // When there's a spectator in multiplayer games, it's processed automatically, but shouldn't be able to actually do anything
 
         val civView = GameView(civInfo.gameInfo, civInfo).civView
-        val cache = AutomationCache(AdvancedAIContext(civInfo.gameInfo.turns, civView.civID, civInfo.cities.size, diagnostics))
+        val context = (if (diagnostics == null) civInfo.cache.activeAdvancedAIContext else null)
+            ?: AdvancedAIContext(civInfo.gameInfo.turns, civView.civID, civInfo.cities.size, diagnostics)
+        val cache = AutomationCache(context)
 
         respondToPopupAlerts(civView)
         TradeAutomation.respondToTradeRequests(civInfo, tradeAndChangeState)
@@ -90,7 +92,7 @@ object NextTurnAutomation {
             civInfo.cityStateFunctions.updateDiplomaticRelationshipForCityState()
         }
 
-        if (civInfo.isAI()) cache.advancedAIContext?.analyzeStrategy(civInfo)
+        context.prioritiesFor(civInfo)
         chooseTechToResearch(civView, cache.advancedAIContext)
         automateCityBombardment(civView)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
@@ -111,7 +113,7 @@ object NextTurnAutomation {
             }
         }
 
-        automateCities(civView)  // second most expensive
+        automateCities(civView, context)  // second most expensive
         if (tradeAndChangeState) trainSettler(civView)
         // I'm not sure what will happen if we *don't* vote when we can, so automate vote even when forced automation
         tryVoteForDiplomaticVictory(civView)
@@ -623,7 +625,9 @@ object NextTurnAutomation {
             && civInfo.stats.statsForNextTurn.happiness > city.population.population * 2 - 8 // don't go below -10 happiness due to annexing
     }
 
-    fun automateCities(civView: CivView) {
+    fun automateCities(civView: CivView) = automateCities(civView, null)
+
+    private fun automateCities(civView: CivView, context: AdvancedAIContext?) {
         val civInfo = civView.getCiv()
         val ownMilitaryStrength = civInfo.getStatForRanking(RankingType.Force)
         val sumOfEnemiesMilitaryStrength =
@@ -643,7 +647,7 @@ object NextTurnAutomation {
                     continue // found a unit to build so move on
             }
 
-            city.cityConstructions.chooseNextConstruction()
+            city.cityConstructions.chooseNextConstruction(context)
         }
     }
 
