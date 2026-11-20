@@ -125,10 +125,15 @@ interface IHasUniques : INamed {
     }
 
     @Readonly
-    fun getWeightForAiDecision(gameContext: GameContext): Float {
+    fun getWeightForAiDecision(gameContext: GameContext): Float =
+        getWeightForAiDecision(gameContext) { true }
+
+    @Readonly
+    fun getWeightForAiDecision(gameContext: GameContext, weightFilter: (Unique) -> Boolean): Float {
         var weight = 1f
-        for (unique in getMatchingUniques(UniqueType.AiChoiceWeight, gameContext))
+        forEachMatchingUnique(UniqueType.AiChoiceWeight, gameContext, weightFilter) { unique ->
             weight *= unique.params[0].toPercent()
+        }
 
         // TODO We should have an IHasMatchesFilter?
         if (this !is BaseUnit && this !is Building) return weight

@@ -123,6 +123,19 @@ class TechnologyPlannerTest {
     }
 
     @Test
+    fun `choice weights cannot reveal who secretly researched a technology`() {
+        tech("A", 25)
+        tech("Secret Race", 25).uniques.add(
+            "[+1000]% weight to this choice for AI decisions <if no other Civilization has researched this>")
+        val other = game.addCiv()
+        game.addCity(other, game.getTile(2, 0))
+
+        assertEquals("A", choose())
+        other.tech.techsResearched.add("Secret Race")
+        assertEquals("A", choose())
+    }
+
+    @Test
     fun `lookahead stops after four distinct technologies`() {
         unlock(tech("Local Development", 20), production = 3f)
         var previous = tech("Branch 1", 20)

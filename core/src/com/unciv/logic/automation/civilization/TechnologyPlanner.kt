@@ -19,6 +19,15 @@ object TechnologyPlanner {
     private const val PATH_COST_TURNS = 18f
     private const val EXTRA_STEP_DISCOUNT = 0.35f
 
+    // AI choice weights are not exposed by the research picker. Evaluate only unconditional weights
+    // and conditions based on our research, era, or public game settings.
+    private val visibleWeightConditions = setOf(
+        UniqueType.ConditionalTech, UniqueType.ConditionalNoTech,
+        UniqueType.ConditionalBeforeEra, UniqueType.ConditionalDuringEra, UniqueType.ConditionalStartingFromEra,
+        UniqueType.ConditionalIfStartingInEra, UniqueType.ConditionalSpeed, UniqueType.ConditionalDifficulty,
+        UniqueType.ConditionalVictoryEnabled, UniqueType.ConditionalVictoryDisabled
+    )
+
     private data class Unlock(val requirements: Set<String>, val value: Float)
 
     fun choose(civ: Civilization, priorities: StrategicPriorities, context: AdvancedAIContext? = null): Technology? =
@@ -93,7 +102,9 @@ object TechnologyPlanner {
         }
 
         private fun weight(step: Technology): Float = weights.getOrPut(step.name) {
-            step.getWeightForAiDecision(civ.state).coerceAtLeast(0f)
+            step.getWeightForAiDecision(civ.state) { unique ->
+                unique.modifiers.all { it.type in visibleWeightConditions }
+            }.coerceAtLeast(0f)
         }
 
         private fun pathTo(target: Technology): List<Technology>? {
