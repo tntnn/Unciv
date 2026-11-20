@@ -1,7 +1,7 @@
 # Unciv Advanced AI — Living Roadmap
 
-- Version: v1.1
-- SHA-256: e84bea2cea00c5fa4dca7ce125f1d90717e38030c47c63ebcbe7d5cd0cf655f8
+- Version: v1.2
+- SHA-256: 384b667079e6f03f26efaa02b0a5bd8e59940c893efcf6a9a3ed000719e2c4e7
 - Status: Living document / Last Known Good
 - Baseline project: Unciv official
 - Baseline release: 5.0.1
@@ -396,7 +396,7 @@ The 200–400 simulation range is the current target for major A/B comparisons b
 
 M0 established **statistical within-game A/B testing** as the authoritative strength test for the current project baseline. The default operational batch sizes are now **32 games for smoke** and **256 games for a main A/B comparison**, with larger runs allowed when variance or a small effect size requires them.
 
-Exact replay is a separate debugging/regression mode. M0 found that bit-for-bit replay determinism is not established in Unciv 5.0.1 even when starting from cloned game state, so exact replay must not be treated as an oracle until that issue is isolated. Detailed evidence and the benchmark protocol are recorded in `UNCIV_ADVANCED_AI_M0_BASELINE.md`.
+Exact replay is a separate debugging/regression mode. M0 found that bit-for-bit replay determinism is not established in Unciv 5.0.1 even when starting from cloned game state, so exact replay must not be treated as an oracle until that issue is isolated. Detailed evidence and the benchmark protocol are recorded in `docs/advanced-ai/M0_BASELINE.md`.
 
 ### 10.2. Core metrics
 
@@ -428,7 +428,7 @@ Not every metric must exist in the first benchmark implementation.
 
 ### M0 — Baseline and AI map
 
-**Status: Completed on 2026-11-20.** Detailed evidence is recorded in `UNCIV_ADVANCED_AI_M0_BASELINE.md`. Exact replay determinism remains an open benchmark-engineering issue, but it does not block statistical A/B comparison.
+**Status: Completed on 2026-11-20.** Detailed evidence is recorded in `docs/advanced-ai/M0_BASELINE.md`. Exact replay determinism remains an open benchmark-engineering issue, but it does not block statistical A/B comparison.
 
 Goals:
 
@@ -444,6 +444,16 @@ Exit condition:
 A documented baseline exists and future changes can be compared against it. **Met through the pinned 5.0.1 control and Unciv's statistical experiment/control mechanism.**
 
 ### M1 — Shared context and diagnostics
+
+**Status: Completed on 2026-11-20.**
+
+`NextTurnAutomation` creates the turn-local `AutomationCache` just after constructing the civilization view. The cache holds an `AdvancedAIContext` with the turn, civilization ID, and own city count. Existing cache data is still populated on demand during unit automation. The optional diagnostics sink receives a structured completion record when enabled.
+
+Simulation records the build revision, configuration, and group assignments for the run, plus the map seed, game ID, outcome, duration, and requested statistics for each game. It samples checkpoints at turn boundaries and reports final statistics for both wins and draws.
+
+Build the desktop JAR with `./gradlew :desktop:dist`. From `android/assets`, launch `com.unciv.app.desktop.ConsoleLauncher --smoke` with that JAR on the classpath. Set `-Dunciv.benchmark.revision` to the build's Git revision and use `-DonlyLog=Timers` for timing output. The preset runs 32 games across four threads on the mirrored M0 scenario, with a 100-turn cap and checkpoints at turns 25, 50, and 75.
+
+Validation on Windows with OpenJDK 21 recorded 1,002 passing JVM tests and 25 skipped tests. All 32 smoke games reached turn 100 as draws and produced final statistics for both civilizations. The run recorded 32 game IDs and 31 distinct map seeds. `automateCivMoves` averaged 27.90 ms across 6,400 calls, with a p95 of 82.18 ms. M0's four-game reference averaged 28.12 ms, with a p95 of 68.44 ms. The sample sizes and run conditions limit direct performance comparisons. Exact replay determinism remains open.
 
 Goals:
 
@@ -536,7 +546,7 @@ A stable Advanced AI build can be tested and used on both target platforms.
 - Existing Unciv automation should be reused where appropriate.
 - Benchmarking should be continuous, not postponed until the end.
 - Military coordination is a major priority.
-- M0 architectural/statistical baseline is complete and documented in `UNCIV_ADVANCED_AI_M0_BASELINE.md`.
+- M0 architectural/statistical baseline is complete and documented in `docs/advanced-ai/M0_BASELINE.md`.
 - `NextTurnAutomation` remains the primary integration/orchestration point; the existing automation stack will not be wholesale replaced.
 - Existing `AutomationCache` functionality should be preserved and composed with later shared strategic context rather than replaced.
 - Technology planning is an early high-value improvement target; current technology choice is primarily local/cost-group weighted.
@@ -596,6 +606,10 @@ A roadmap change does not automatically imply a code change, and a code experime
 
 ## 15. Changelog
 
+### v1.2 — 2026-11-20
+
+Recorded the M1 context lifecycle, optional diagnostics, simulation metadata, draw reporting, and validation results. Updated M0 references to the repository path.
+
 ### v1.1 — 2026-11-20
 
 M0 completed and reconciled into the living roadmap.
@@ -609,7 +623,7 @@ Key updates:
 - established 32-game smoke and 256-game main A/B defaults;
 - separated statistical A/B from exact replay testing;
 - recorded replay nondeterminism as an explicit open engineering issue;
-- linked the detailed `UNCIV_ADVANCED_AI_M0_BASELINE.md` evidence report.
+- linked the detailed `docs/advanced-ai/M0_BASELINE.md` evidence report.
 
 ### v1 — 2026-11-20
 
