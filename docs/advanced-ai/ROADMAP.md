@@ -1,7 +1,7 @@
 # Unciv Advanced AI — Living Roadmap
 
-- Version: v1.2
-- SHA-256: 384b667079e6f03f26efaa02b0a5bd8e59940c893efcf6a9a3ed000719e2c4e7
+- Version: v1.3
+- SHA-256: 0fe1e98037d0ece91b1ce357b1edfd635a732efa46c6111f1f109c7b5649edf7
 - Status: Living document / Last Known Good
 - Baseline project: Unciv official
 - Baseline release: 5.0.1
@@ -468,6 +468,8 @@ The architecture can carry shared strategic information without causing signific
 
 ### M2 — Strategy, technology, and city planning
 
+**Incomplete (2026-11-20).** The full M2 candidate won 96 of 256 paired games against M1. Turn-100 science output increased by 19.6% and production fell by 16.5%. The Strategy + City ablation finished 33–31 in 64 games and did not establish a measurable development gain. The branch restored M1 decision behavior and retained the simulation reporting improvements. The candidate, fairness audit, performance measurements, and benchmark evidence are recorded in [M2](milestones/M2.md).
+
 Goals:
 
 - implement the first `StrategicDirector` behavior;
@@ -605,6 +607,10 @@ When updated:
 A roadmap change does not automatically imply a code change, and a code experiment does not automatically become roadmap policy until it has been reviewed.
 
 ## 15. Changelog
+
+### v1.3 — 2026-11-20
+
+Recorded the M2 implementation, negative A/B result, inconclusive ablation, and gameplay rollback.
 
 ### v1.2 — 2026-11-20
 
