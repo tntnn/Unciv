@@ -1,7 +1,7 @@
 # Unciv Advanced AI — Agent Instructions
 
-- Version: v1
-- SHA-256: bde2b69593bda61748ed9d5b5f320f26704dfae6546ab2f0b937b5fa1de4f96f
+- Version: v1.1
+- SHA-256: 471318f4eacdf5fbbb3fb14c874f086887ac1411f6eba5eb30d30244d74f4855
 
 ## 1. Purpose
 
@@ -60,6 +60,8 @@ If project documents disagree, do **not** silently reconcile them. Prefer, in or
 5. older baseline/reference documents for historical evidence.
 
 Report any material conflict that cannot be resolved from that precedence.
+
+Advanced AI project Markdown documents include an embedded SHA-256. To verify it, exclude only the `- SHA-256: ...` metadata line, including its line ending, and hash the remaining bytes as stored. Expect the whole-file SHA-256 to differ from the embedded value and use the embedded checksum to assess document integrity. When editing a document, preserve every byte outside the intended changes, including encoding, line endings, and whitespace.
 
 ## 4. Non-negotiable project principles
 
