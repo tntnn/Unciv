@@ -6,7 +6,6 @@ import com.unciv.logic.automation.Timers.Companion.timeThis
 import com.unciv.logic.IsPartOfGameInfoSerialization
 import com.unciv.logic.automation.Automation
 import com.unciv.logic.automation.city.ConstructionAutomation
-import com.unciv.logic.automation.civilization.AdvancedAIContext
 import com.unciv.logic.civilization.AlertType
 import com.unciv.logic.civilization.CivilopediaAction
 import com.unciv.logic.civilization.LocationAction
@@ -887,9 +886,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
 
     private fun removeCurrentConstruction() = removeFromQueue(0, true)
 
-    fun chooseNextConstruction() = chooseNextConstruction(city.civ.cache.activeAdvancedAIContext)
-
-    internal fun chooseNextConstruction(context: AdvancedAIContext?): Unit = timeThis("chooseNextConstruction") {
+    fun chooseNextConstruction():Unit = timeThis("chooseNextConstruction") {
         val currentName = currentConstructionName()
         if (currentName.isNotEmpty() && currentName != PerpetualConstruction.Idle.name) { // the queue is neither empty nor idle
             // If the USER set a perpetual construction, then keep it!
@@ -901,7 +898,7 @@ class CityConstructions : IsPartOfGameInfoSerialization {
         if ((isCurrentPlayersTurn && (UncivGame.Current.settings.autoAssignCityProduction
                 || UncivGame.Current.worldScreen?.autoPlay?.isAutoPlayingAndFullAutoPlayAI() == true)) // only automate if the active human player has the setting to automate production
                 || city.civ.isAI() || city.isPuppet) {
-            ConstructionAutomation(this, context).chooseNextConstruction()
+            ConstructionAutomation(this).chooseNextConstruction()
         }
 
         /** Support for [UniqueType.CreatesOneImprovement] - if an Improvement-creating Building was auto-queued, auto-choose a tile: */

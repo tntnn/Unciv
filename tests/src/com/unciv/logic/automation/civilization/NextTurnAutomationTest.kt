@@ -57,13 +57,10 @@ class NextTurnAutomationTest(private val algorithm: PathfindingAlgorithm) {
         testGame.gameInfo.turns++
         NextTurnAutomation.automateCivMoves(civInfo, false) { records.add(it) }
 
-        val completion = records.filter { it.category == "civilization-turn-completed" }
-        assertEquals(listOf(7, 7, 8), completion.map { it.turn })
-        assertEquals(listOf(civInfo.civID, otherCiv.civID, civInfo.civID), completion.map { it.civId })
-        assertEquals(listOf(1, 2, 1), completion.map { it.ownCityCount })
-        assertTrue(completion.all { it.choice == null })
-        assertEquals(completion.map { it.civId },
-            records.filter { it.category == "strategic-priorities" }.map { it.civId })
+        assertEquals(listOf(7, 7, 8), records.map { it.turn })
+        assertEquals(listOf(civInfo.civID, otherCiv.civID, civInfo.civID), records.map { it.civId })
+        assertEquals(listOf(1, 2, 1), records.map { it.ownCityCount })
+        assertTrue(records.all { it.category == "civilization-turn-completed" && it.choice == null })
     }
 
     @Test

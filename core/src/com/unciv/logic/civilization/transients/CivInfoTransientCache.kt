@@ -1,7 +1,6 @@
 package com.unciv.logic.civilization.transients
 
 import com.unciv.Constants
-import com.unciv.logic.automation.civilization.AdvancedAIContext
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.Civilization
 import com.unciv.logic.civilization.Notification
@@ -26,9 +25,6 @@ import com.unciv.logic.automation.Timers.Companion.timeThis
 
 /** CivInfo class was getting too crowded */
 class CivInfoTransientCache(val civInfo: Civilization) {
-
-    @Transient
-    internal var activeAdvancedAIContext: AdvancedAIContext? = null
 
     @Transient
     var lastEraResourceUsedForBuilding = java.util.HashMap<String, Int>()

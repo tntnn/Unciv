@@ -12,7 +12,6 @@ import com.unciv.logic.BackwardCompatibility.migrateToTileHistory
 import com.unciv.logic.BackwardCompatibility.removeMissingModReferences
 import com.unciv.logic.GameInfoPreview.Companion.randomGameId
 import com.unciv.logic.automation.Timers.Companion.timeThis
-import com.unciv.logic.automation.civilization.AdvancedAIContext
 import com.unciv.logic.automation.civilization.BarbarianManager
 import com.unciv.logic.city.City
 import com.unciv.logic.civilization.*
@@ -450,30 +449,28 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
             shouldAutoProcessOnlinePlayer())        // or player is online spectator
         {
 
-            AdvancedAIContext.duringTurn(player) {
-                // Starting preparations
-                TurnManager(player).startTurn(progressBar)
+            // Starting preparations
+            TurnManager(player).startTurn(progressBar)
 
-                // Automation done here
-                TurnManager(player).automateTurn()
+            // Automation done here
+            TurnManager(player).automateTurn()
 
-                val worldScreen = UncivGame.Current.worldScreen
-                // Do we need to break if player won?
-                if (simulateUntilWin && (player.victoryManager.hasWon() || simulateMaxTurns in 1..turns
-                        || getAliveMajorCivs().isEmpty())) {
-                    simulateUntilWin = false
-                    simulateMaxTurns = 0
-                    worldScreen?.autoPlay?.stopAutoPlay()
-                    break
-                }
-
-                // Do we need to stop AutoPlay?
-                if (worldScreen != null && worldScreen.autoPlay.isAutoPlaying() && player.victoryManager.hasWon() && !oneMoreTurnMode)
-                    worldScreen.autoPlay.stopAutoPlay()
-
-                // Clean up
-                TurnManager(player).endTurn(progressBar)
+            val worldScreen = UncivGame.Current.worldScreen
+            // Do we need to break if player won?
+            if (simulateUntilWin && (player.victoryManager.hasWon() || simulateMaxTurns in 1..turns
+                    || getAliveMajorCivs().isEmpty())) {
+                simulateUntilWin = false
+                simulateMaxTurns = 0
+                worldScreen?.autoPlay?.stopAutoPlay()
+                break
             }
+
+            // Do we need to stop AutoPlay?
+            if (worldScreen != null && worldScreen.autoPlay.isAutoPlaying() && player.victoryManager.hasWon() && !oneMoreTurnMode)
+                worldScreen.autoPlay.stopAutoPlay()
+
+            // Clean up
+            TurnManager(player).endTurn(progressBar)
 
             // To the next player
             setNextPlayer()

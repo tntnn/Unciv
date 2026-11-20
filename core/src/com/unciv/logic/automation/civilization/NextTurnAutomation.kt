@@ -58,9 +58,7 @@ object NextTurnAutomation {
         if (civInfo.isSpectator) return // When there's a spectator in multiplayer games, it's processed automatically, but shouldn't be able to actually do anything
 
         val civView = GameView(civInfo.gameInfo, civInfo).civView
-        val context = (if (diagnostics == null) civInfo.cache.activeAdvancedAIContext else null)
-            ?: AdvancedAIContext(civInfo.gameInfo.turns, civView.civID, civInfo.cities.size, diagnostics)
-        val cache = AutomationCache(context)
+        val cache = AutomationCache(AdvancedAIContext(civInfo.gameInfo.turns, civView.civID, civInfo.cities.size, diagnostics))
 
         respondToPopupAlerts(civView)
         TradeAutomation.respondToTradeRequests(civInfo, tradeAndChangeState)
@@ -92,8 +90,7 @@ object NextTurnAutomation {
             civInfo.cityStateFunctions.updateDiplomaticRelationshipForCityState()
         }
 
-        context.prioritiesFor(civInfo)
-        chooseTechToResearch(civView, cache.advancedAIContext)
+        chooseTechToResearch(civView)
         automateCityBombardment(civView)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
         if (tradeAndChangeState && !civView.isCityState) {
@@ -113,7 +110,7 @@ object NextTurnAutomation {
             }
         }
 
-        automateCities(civView, context)  // second most expensive
+        automateCities(civView)  // second most expensive
         if (tradeAndChangeState) trainSettler(civView)
         // I'm not sure what will happen if we *don't* vote when we can, so automate vote even when forced automation
         tryVoteForDiplomaticVictory(civView)
@@ -267,7 +264,7 @@ object NextTurnAutomation {
         }
     }
 
-    private fun chooseTechToResearch(civView: CivView, context: AdvancedAIContext?) {
+    private fun chooseTechToResearch(civView: CivView) {
         val civInfo = civView.getCiv()
         val rng = civInfo.state.stateBasedRandom("NextTurnAutomation.chooseTechToResearch")
 
@@ -293,11 +290,6 @@ object NextTurnAutomation {
             civInfo.tech.getFreeTechnology(chosenTech.name)
         }
         if (civInfo.tech.techsToResearch.isEmpty()) {
-            val planned = context?.strategicPriorities?.let { TechnologyPlanner.choose(civInfo, it, context) }
-            if (planned != null) {
-                civInfo.tech.techsToResearch.add(planned.name)
-                return
-            }
             val costs = getGroupedResearchableTechs()
             if (costs.isEmpty()) return
 
@@ -625,9 +617,7 @@ object NextTurnAutomation {
             && civInfo.stats.statsForNextTurn.happiness > city.population.population * 2 - 8 // don't go below -10 happiness due to annexing
     }
 
-    fun automateCities(civView: CivView) = automateCities(civView, null)
-
-    private fun automateCities(civView: CivView, context: AdvancedAIContext?) {
+    fun automateCities(civView: CivView) {
         val civInfo = civView.getCiv()
         val ownMilitaryStrength = civInfo.getStatForRanking(RankingType.Force)
         val sumOfEnemiesMilitaryStrength =
@@ -647,7 +637,7 @@ object NextTurnAutomation {
                     continue // found a unit to build so move on
             }
 
-            city.cityConstructions.chooseNextConstruction(context)
+            city.cityConstructions.chooseNextConstruction()
         }
     }
 
