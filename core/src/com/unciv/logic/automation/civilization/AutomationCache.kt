@@ -11,7 +11,9 @@ import yairm210.purity.annotations.Readonly
  * Created in [NextTurnAutomation.automateCivMoves] and passed down to wherever it's needed - it is never stored on game state,
  * so it cannot go stale between turns.
  */
-class AutomationCache {
+class AutomationCache internal constructor(internal val advancedAIContext: AdvancedAIContext?) {
+    // Individual unit and partial autoplay calls do not have a civilization-turn context.
+    constructor() : this(null)
 
     class ClosestEnemyTileData(
         /** The farthest radius in which we have checked tiles for enemies.

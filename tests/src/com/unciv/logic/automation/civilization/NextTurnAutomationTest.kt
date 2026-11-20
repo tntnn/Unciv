@@ -44,6 +44,26 @@ class NextTurnAutomationTest(private val algorithm: PathfindingAlgorithm) {
     }
 
     @Test
+    fun `diagnostics carry a fresh own-civ snapshot for each automation pass`() {
+        val otherCiv = testGame.addCiv()
+        testGame.addCity(otherCiv, testGame.getTile(3, 0))
+        testGame.addCity(otherCiv, testGame.getTile(-3, 0))
+        val records = mutableListOf<AdvancedAIContext.Diagnostic>()
+
+        testGame.gameInfo.turns = 7
+        NextTurnAutomation.automateCivMoves(civInfo, false) { records.add(it) }
+        NextTurnAutomation.automateCivMoves(otherCiv, false) { records.add(it) }
+        NextTurnAutomation.automateCivMoves(otherCiv, tradeAndChangeState = false)
+        testGame.gameInfo.turns++
+        NextTurnAutomation.automateCivMoves(civInfo, false) { records.add(it) }
+
+        assertEquals(listOf(7, 7, 8), records.map { it.turn })
+        assertEquals(listOf(civInfo.civID, otherCiv.civID, civInfo.civID), records.map { it.civId })
+        assertEquals(listOf(1, 2, 1), records.map { it.ownCityCount })
+        assertTrue(records.all { it.category == "civilization-turn-completed" && it.choice == null })
+    }
+
+    @Test
     fun `automateSettlerEscorting replaces low hp escort`() {
         val settler = testGame.addUnit("Settler", civInfo, testGame.tileMap[0,2])
         val highHpWarrior = testGame.addUnit("Warrior", civInfo, testGame.tileMap[0,1])

@@ -46,11 +46,19 @@ object NextTurnAutomation {
     /** Top-level AI turn task list */
     fun automateCivMoves(civInfo: Civilization,
                          /** set false for 'forced' automation, such as skip turn */
-                         tradeAndChangeState: Boolean = true): Unit = timeThis("automateCivMoves") {
+                         tradeAndChangeState: Boolean = true): Unit = automateCivMoves(civInfo, tradeAndChangeState, null)
+
+    /** Runs the same automation pass with an optional sink for diagnostic snapshots. */
+    fun automateCivMoves(
+        civInfo: Civilization,
+        tradeAndChangeState: Boolean,
+        diagnostics: ((AdvancedAIContext.Diagnostic) -> Unit)?
+    ): Unit = timeThis("automateCivMoves") {
         if (civInfo.isBarbarian) return BarbarianAutomation(civInfo).automate()
         if (civInfo.isSpectator) return // When there's a spectator in multiplayer games, it's processed automatically, but shouldn't be able to actually do anything
 
         val civView = GameView(civInfo.gameInfo, civInfo).civView
+        val cache = AutomationCache(AdvancedAIContext(civInfo.gameInfo.turns, civView.civID, civInfo.cities.size, diagnostics))
 
         respondToPopupAlerts(civView)
         TradeAutomation.respondToTradeRequests(civInfo, tradeAndChangeState)
@@ -89,7 +97,6 @@ object NextTurnAutomation {
             protectCityStates(civView)
             bullyCityStates(civView)
         }
-        val cache = AutomationCache()
         automateUnits(civView, cache)  // this is the most expensive part
 
         if (tradeAndChangeState && civInfo.isMajorCiv) {
@@ -107,6 +114,7 @@ object NextTurnAutomation {
         if (tradeAndChangeState) trainSettler(civView)
         // I'm not sure what will happen if we *don't* vote when we can, so automate vote even when forced automation
         tryVoteForDiplomaticVictory(civView)
+        cache.advancedAIContext?.record(category = "civilization-turn-completed")
     }
 
     fun automateGoldToSciencePercentage(civView: CivView) {
