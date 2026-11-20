@@ -91,7 +91,7 @@ object NextTurnAutomation {
         }
 
         if (civInfo.isAI()) cache.advancedAIContext?.analyzeStrategy(civInfo)
-        chooseTechToResearch(civView)
+        chooseTechToResearch(civView, cache.advancedAIContext)
         automateCityBombardment(civView)
         if (tradeAndChangeState) UseGoldAutomation.useGold(civInfo)
         if (tradeAndChangeState && !civView.isCityState) {
@@ -265,7 +265,7 @@ object NextTurnAutomation {
         }
     }
 
-    private fun chooseTechToResearch(civView: CivView) {
+    private fun chooseTechToResearch(civView: CivView, context: AdvancedAIContext?) {
         val civInfo = civView.getCiv()
         val rng = civInfo.state.stateBasedRandom("NextTurnAutomation.chooseTechToResearch")
 
@@ -291,6 +291,11 @@ object NextTurnAutomation {
             civInfo.tech.getFreeTechnology(chosenTech.name)
         }
         if (civInfo.tech.techsToResearch.isEmpty()) {
+            val planned = context?.strategicPriorities?.let { TechnologyPlanner.choose(civInfo, it, context) }
+            if (planned != null) {
+                civInfo.tech.techsToResearch.add(planned.name)
+                return
+            }
             val costs = getGroupedResearchableTechs()
             if (costs.isEmpty()) return
 
