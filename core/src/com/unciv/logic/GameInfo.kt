@@ -381,7 +381,15 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
      *  @param progressBar Optional reference to UI widget either provided by [WorldScreen.nextTurn][com.unciv.ui.screens.worldscreen.WorldScreen.nextTurn] or `null` when simulating
      *  @param shouldGainTime on a multiplayer game, if true, makes the player whose turn is ended recover time to play before risking getting forced to resign, 'false' by default 
      */
-    fun nextTurn(progressBar: NextTurnProgress? = null, shouldGainTime: Boolean = false): Unit = timeThis("GameInfo.nextTurn") {
+    fun nextTurn(progressBar: NextTurnProgress? = null, shouldGainTime: Boolean = false): Unit =
+        nextTurn(progressBar, shouldGainTime, onTurnStarted = null)
+
+    // Simulation can sample at round boundaries without interrupting turn processing.
+    internal fun nextTurn(
+        progressBar: NextTurnProgress? = null,
+        shouldGainTime: Boolean = false,
+        onTurnStarted: ((Int) -> Unit)?
+    ): Unit = timeThis("GameInfo.nextTurn") {
         var player = currentPlayerCiv
         var playerIndex = civilizations.indexOf(player)
 
@@ -398,6 +406,7 @@ class GameInfo : IsPartOfGameInfoSerialization, HasGameInfoSerializationVersion 
             if (playerIndex == 0) {
                 recordRankingStats()
                 turns++
+                onTurnStarted?.invoke(turns)
                 if (DebugUtils.SIMULATE_UNTIL_TURN != 0)
                     debug("Starting simulation of turn %s", turns)
             }

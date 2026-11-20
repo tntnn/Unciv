@@ -39,11 +39,11 @@ internal object ConsoleLauncher {
         TileSetCache.loadTileSetConfigs(true)
         SkinCache.loadSkinConfigs(true)
 
-        runSimulation()
+        runSimulation(smoke = "--smoke" in arg)
     }
 
     @ExperimentalTime
-    private fun runSimulation() {
+    private fun runSimulation(smoke: Boolean) {
         val ruleset = RulesetCache[BaseRuleset.Civ_V_GnK.fullName]!!
 
         val simulationNation1 = Nation().apply { name = simulationCiv1 }
@@ -60,7 +60,14 @@ internal object ConsoleLauncher {
         newGame.gameParameters.victoryTypes = ArrayList(newGame.ruleset.victories.keys)
         UncivGame.Current.gameInfo = newGame
 
-        val simulation = Simulation(newGame, 500, 8)
+        val buildRevision = System.getProperty("unciv.benchmark.revision")
+        val simulation = if (smoke) {
+            Simulation(newGame, simulationsPerThread = 8, threadsNumber = 4, maxTurns = 100,
+                statTurns = listOf(25, 50, 75), civIdsInExperimentGroup = setOf(simulationCiv2),
+                configurationId = "console-mirrored-smoke-v1", buildRevision = buildRevision)
+        } else {
+            Simulation(newGame, 500, 8, configurationId = "console-mirrored-v1", buildRevision = buildRevision)
+        }
         //Unless the effect size is very large, you'll typically need a large number of games to get a statistically significant result
 
         simulation.start()
